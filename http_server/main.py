@@ -35,6 +35,11 @@ def create_table_if_not_exists():
         metadata = MetaData(engine)
         metadata.create_all(tables=urls)
 
+@app.listener('after_server_start')
+def create_task_queue(app, loop):
+    app.queue = asyncio.Queue(loop=loop, maxsize=worker.MAXSIZE)
+    app.add_task(worker.fetch_urls_worker(app, app.queue))
+
 def init():
     env = Env()
     env.read_env()
@@ -46,4 +51,5 @@ def init():
     create_table_if_not_exists()
 
     app.run(config)
+    create_task_queue()
 

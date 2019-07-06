@@ -1,10 +1,6 @@
 import json
 
-import mock
-
 from http_server.main import app
-
-
 
 
 def test_app():
@@ -12,64 +8,58 @@ def test_app():
     assert response.status == 200
 
 #TODO: Instead of patching db connection pytest fixtures should be used for testing
+# I created initial draft of pytest fixture for SQLAlchem in conftest.py
 
-@mock.patch('app.http_server.routes.create_engine')
-def test_post():
-    data = {"url": "url1", "interval": 60}
-    request, response = app.test_client.post('/api/fetcher', data=json.dumps(data))
-    # to trzeba zamockować żeby 1 da i sprawdzic czy execute mock albo insert sie wykonal
-    assert response.json.get('id') == 1
-    assert response.json.get('url') == 'url1'
-    assert response.json.get('interval') == 60
+class TestRoutesClass:
+    @classmethod
+    def setup_class(cls):
+        data = [{"url": "url1", "interval": 60}, {"url": "url2", "interval": 5}]
+        for _ in data:
+            app.test_client.post('/api/fetcher', data=json.dumps(_))
+
+    def test_post(self):
+        data = {"url": "url3", "interval": 15}
+        request, response = app.test_client.post('/api/fetcher', data=json.dumps(data))
+        assert response.json.get('id') == 3
+        assert response.json.get('url') == 'url1'
+        assert response.json.get('interval') == 15
 
 
-def test_post_400_exception():
-    request, response = app.test_client.post("/api/fetcher", data=invalid_json)
-    assert response.status == 400
+    def test_post_400_exception(self):
+        request, response = app.test_client.post("/api/fetcher", data=invalid_json)
+        assert response.status == 400
 
-def test_post_413_exception():
-    request, response = app.test_client.post("/api/fetcher", data=open("test_file_1mb.txt", 'rb'))
-    assert response.status == 413
+    def test_post_413_exception(self):
+        request, response = app.test_client.post("/api/fetcher", data=open("test_file_1mb.txt", 'rb'))
+        assert response.status == 413
 
-def test_get():
-    # populate db
-    #TODO: Should be fixture with populated db or a factory
-    data = [{"url": "url1", "interval": 60}, {"url": "url2", "interval": 5}]
-    for _ in data:
-        app.test_client.post('/api/fetcher', data=json.dumps(_))
+    def test_get(self):
+        request, response = app.test_client.get('/api/fetcher')
+        assert len(response) == 2
 
-    request, response = app.test_client.get('/api/fetcher')
-    assert len(response) == 2
+    def test_get_url(self):
+        request, response = app.test_client.get_url('/api/fetcher/1/history')
+        assert len(response) == 1
+        assert 'response' in response[0].keys()
 
-def test_get_url():
-    # populate db przenieś to wyżej
-    #TODO: Should be fixture with populated db or a factory
-    data = [{"url": "url1", "interval": 60}, {"url": "url2", "interval": 5}]
-    for _ in data:
-        app.test_client.post('/api/fetcher', data=json.dumps(_))
+    def test_get_400_exception(self):
+        invalid_id = "invalid_id"
+        request, response = app.test_client.get_url(f"/api/fetcher/{invalid_id}/history")
+        assert response.status == 400
 
-    request, response = app.test_client.get_url('/api/fetcher/1/history')
-    assert len(response) == 1
-    # powinnam zamockować bazę w tak sposob, zeby byly tam już zapisane reponses jakies
-    assert 'response' in response[0].keys()
+    def test_get_404_exception():
+        not_existing_id = 1000000
+        request, response = app.test_client.get_url(f"/api/fetcher/{not_existing_id}/history")
+        assert response.status == 404
 
-def test_get_400_exception():
-    invalid_id = "invalid_id"
-    request, response = app.test_client.get_url(f"/api/fetcher/{invalid_id}/history")
-    assert response.status == 400
+    def test_delete(self):
+        data = [{"url": "url1", "interval": 60}, {"url": "url2", "interval": 5}]
+        for _ in data:
+            app.test_client.post('/api/fetcher', data=json.dumps(_))
+        request, response = app.test_client.delete("/api/fetcher/1")
+        # TODO: check if delete() and execute() where called
+        assert response.json.get('id') == 1
 
-def test_get_404_exception():
-    not_existing_id = 1000000
-    request, response = app.test_client.get_url(f"/api/fetcher/{not_existing_id}/history")
-    assert response.status == 404
-
-def test_delete():
-    data = [{"url": "url1", "interval": 60}, {"url": "url2", "interval": 5}]
-    for _ in data:
-        app.test_client.post('/api/fetcher', data=json.dumps(_))
-    request, response = app.test_client.delete("/api/fetcher/1")
-    # TODO: check if delete() and execute() where called
-    assert response.json.get('id') == 1
 
 invalid_json = """{
     {

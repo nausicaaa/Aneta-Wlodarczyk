@@ -8,6 +8,7 @@ from http_server import settings
 from http_server.main import app
 from http_server.tables import urls
 
+#TODO: Use Session object for db connection would be more effective
 engine = create_engine(settings.DB_URL)
 connection = engine.connect()
 
@@ -56,5 +57,11 @@ def get_url(request, id):
          'created_at': row['created_at']}
         for row in rows
     ]
+
+@app.route("/api/fetcher/<id>", methods=['DELETE'])
+def delete(request, id):
+    query = urls.delete().where(urls.c.id == id)
+    query.execute()
+    return json({'id': id})
 
 

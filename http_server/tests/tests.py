@@ -60,6 +60,7 @@ class TestRoutesClass:
         # TODO: check if delete() and execute() where called
         assert response.json.get('id') == 1
 
+# TODO: add tests for workers
 
 invalid_json = """{
     {

@@ -13,14 +13,7 @@ engine = create_engine(settings.DB_URL)
 connection = engine.connect()
 
 
-@app.route("/api/fetcher/", methods=['POST'])
-def post(request):
-    if ['url', 'interval'] not in request.args:
-        raise InvalidUsage('Incorrect json', status_code=400)
-
-    if len(request.body) >= app.config.REQUEST_MAX_SIZE:
-        raise PayloadTooLarge('Request too large', status_code=413)
-
+def save_data_to_db(request, response=None):
     url = request.args['url']
     interval = request.args['interval']
     insert_query = urls.insert().values(
@@ -58,10 +51,19 @@ def get_url(request, id):
         for row in rows
     ]
 
+@app.route("/api/fetcher/", methods=['POST'])
+def post(request):
+    if ['url', 'interval'] not in request.args:
+        raise InvalidUsage('Incorrect json', status_code=400)
+
+    if len(request.body) >= app.config.REQUEST_MAX_SIZE:
+        raise PayloadTooLarge('Request too large', status_code=413)
+
+    json_response = json(response)
+    save_data_to_db(request, json_response)
+
 @app.route("/api/fetcher/<id>", methods=['DELETE'])
 def delete(request, id):
     query = urls.delete().where(urls.c.id == id)
     query.execute()
     return json({'id': id})
-
-
